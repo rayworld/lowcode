@@ -4,3 +4,4 @@ export * from './page';
 export * from './component';
 export * from './workflow';
 export * from './permission';
+export * from './data-model';

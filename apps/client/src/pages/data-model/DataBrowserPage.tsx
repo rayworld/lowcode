@@ -21,7 +21,7 @@ export default function DataBrowserPage() {
     if (!entityId) return;
     try {
       const [eRes, rRes] = await Promise.all([
-        entityService.findById(entityId),
+        entityService.findById(appId!, entityId),
         entityService.getRecords(entityId, page, 20),
       ]);
       setEntity(eRes.data);

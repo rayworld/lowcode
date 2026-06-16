@@ -30,7 +30,7 @@ export default function EntityDesignerPage() {
 
   useEffect(() => {
     if (entityId) {
-      entityService.findById(entityId).then((res) => setEntity(res.data)).finally(() => setLoading(false));
+      entityService.findById(appId!, entityId).then((res) => setEntity(res.data)).finally(() => setLoading(false));
     }
   }, [entityId]);
 
@@ -40,14 +40,14 @@ export default function EntityDesignerPage() {
     message.success('字段添加成功');
     setModalOpen(false);
     form.resetFields();
-    const res = await entityService.findById(entityId!);
+    const res = await entityService.findById(appId!, entityId!);
     setEntity(res.data);
   };
 
   const handleDeleteField = async (fieldId: string) => {
     await entityService.removeField(fieldId);
     message.success('字段已删除');
-    const res = await entityService.findById(entityId!);
+    const res = await entityService.findById(appId!, entityId!);
     setEntity(res.data);
   };
 

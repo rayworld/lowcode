@@ -2,6 +2,7 @@ import { Injectable, NotFoundException, BadRequestException } from '@nestjs/comm
 import { PrismaService } from '../../common/prisma/prisma.service';
 import { CacheService } from '../../cache/cache.service';
 import { CreateEntityDto, UpdateEntityDto, CreateFieldDto, UpdateFieldDto } from './dto';
+import { EntityRelationGraph, EntityNodeData, EntityRelationEdge } from '@lowcode/shared';
 
 @Injectable()
 export class DataModelService {
@@ -154,6 +155,69 @@ export class DataModelService {
     });
     if (entity) await this.cache.del(this.cache.appKey(entity.appId, 'entities'));
     return { deleted: true };
+  }
+
+  // ========== Relationship Graph ==========
+  async getRelationGraph(appId: string): Promise<EntityRelationGraph> {
+    const entities = await this.prisma.dataEntity.findMany({
+      where: { appId },
+      include: {
+        fields: {
+          select: {
+            id: true,
+            name: true,
+            displayName: true,
+            type: true,
+            required: true,
+            unique: true,
+            isList: true,
+            relationTo: true,
+            relationType: true,
+          },
+          orderBy: { order: 'asc' },
+        },
+      },
+    });
+
+    const nodes: EntityNodeData[] = entities.map((e) => ({
+      id: e.id,
+      name: e.name,
+      displayName: e.displayName,
+      tableName: e.tableName,
+      fields: e.fields.map((f) => ({
+        id: f.id,
+        name: f.name,
+        displayName: f.displayName,
+        type: f.type,
+        required: f.required,
+        unique: f.unique,
+        isList: f.isList,
+        relationTo: f.relationTo ?? undefined,
+        relationType: f.relationType ?? undefined,
+      })),
+    }));
+
+    const entityNameToId = new Map(entities.map((e) => [e.name, e.id]));
+    const edges: EntityRelationEdge[] = [];
+
+    for (const entity of entities) {
+      for (const field of entity.fields) {
+        if (field.relationTo) {
+          const targetId = entityNameToId.get(field.relationTo);
+          if (targetId) {
+            edges.push({
+              id: `${field.id}-rel`,
+              sourceEntityId: entity.id,
+              targetEntityId: targetId,
+              sourceFieldName: field.name,
+              relationType: field.relationType ?? 'ONE_TO_MANY',
+            });
+          }
+        }
+      }
+    }
+
+    return { nodes, edges };
   }
 
   // ========== Helpers ==========

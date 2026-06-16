@@ -26,6 +26,12 @@ export class DataModelController {
     return this.dataModelService.findEntities(appId);
   }
 
+  @Get('relations')
+  @ApiOperation({ summary: '获取实体关系图数据 (nodes + edges)' })
+  async getRelationGraph(@Param('appId') appId: string) {
+    return this.dataModelService.getRelationGraph(appId);
+  }
+
   @Get(':id')
   @ApiOperation({ summary: '获取数据实体详情' })
   async findEntity(@Param('id') id: string) {

@@ -67,3 +67,8 @@ export enum PermissionAction {
   DELETE = 'delete',
   MANAGE = 'manage',
 }
+
+export enum RelationType {
+  ONE_TO_MANY = 'ONE_TO_MANY',
+  MANY_TO_MANY = 'MANY_TO_MANY',
+}
