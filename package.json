@@ -1,0 +1,30 @@
+{
+  "name": "lowcode-platform",
+  "version": "1.0.0",
+  "private": true,
+  "description": "企业级低代码开发平台",
+  "scripts": {
+    "dev": "concurrently \"pnpm --filter @lowcode/server dev\" \"pnpm --filter @lowcode/client dev\"",
+    "dev:server": "pnpm --filter @lowcode/server dev",
+    "dev:client": "pnpm --filter @lowcode/client dev",
+    "build": "pnpm --filter @lowcode/shared build && pnpm --filter @lowcode/server build && pnpm --filter @lowcode/client build",
+    "build:shared": "pnpm --filter @lowcode/shared build",
+    "build:server": "pnpm --filter @lowcode/server build",
+    "build:client": "pnpm --filter @lowcode/client build",
+    "lint": "pnpm -r lint",
+    "format": "prettier --write \"**/*.{ts,tsx,js,json,css,md}\"",
+    "db:migrate": "pnpm --filter @lowcode/server db:migrate",
+    "db:seed": "pnpm --filter @lowcode/server db:seed",
+    "db:generate": "pnpm --filter @lowcode/server db:generate",
+    "docker:up": "docker-compose up -d",
+    "docker:down": "docker-compose down"
+  },
+  "devDependencies": {
+    "concurrently": "^8.2.2",
+    "prettier": "^3.2.5",
+    "typescript": "^5.4.5"
+  },
+  "engines": {
+    "node": ">=18.0.0"
+  }
+}

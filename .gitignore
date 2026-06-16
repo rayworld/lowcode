@@ -1,0 +1,12 @@
+node_modules/
+dist/
+.env
+*.log
+uploads/
+.DS_Store
+*.tsbuildinfo
+coverage/
+.turbo/
+
+# Prisma generated client
+apps/server/src/generated/

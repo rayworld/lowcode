@@ -1,0 +1,215 @@
+generator client {
+  provider     = "prisma-client"
+  output       = "../src/generated/prisma"
+  moduleFormat = "cjs"
+}
+
+datasource db {
+  provider = "postgresql"
+}
+
+// ===== 用户与认证 =====
+model User {
+  id        String   @id @default(uuid())
+  email     String   @unique
+  username  String
+  password  String
+  avatar    String?
+  role      String   @default("DEVELOPER")
+  isActive  Boolean  @default(true)
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  applications Application[]
+  pages        Page[]
+  workflows    Workflow[]
+}
+
+// ===== 应用 =====
+model Application {
+  id          String   @id @default(uuid())
+  name        String
+  description String?  @db.Text
+  icon        String?
+  status      String   @default("DRAFT")
+  createdById String
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  createdBy  User           @relation(fields: [createdById], references: [id])
+  dataModels DataEntity[]
+  pages      Page[]
+  workflows  Workflow[]
+  roles      AppRole[]
+}
+
+// ===== 数据模型 =====
+model DataEntity {
+  id          String   @id @default(uuid())
+  appId       String
+  name        String
+  displayName String
+  tableName   String
+  description String?
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  app    Application @relation(fields: [appId], references: [id])
+  fields Field[]
+  records DataRecord[]
+
+  @@unique([appId, name])
+  @@unique([appId, tableName])
+}
+
+model Field {
+  id           String   @id @default(uuid())
+  entityId     String
+  name         String
+  displayName  String
+  type         String
+  defaultValue String?  @db.Text
+  required     Boolean  @default(false)
+  unique       Boolean  @default(false)
+  isList       Boolean  @default(false)
+  options      Json?    // For SELECT/MULTI_SELECT: [{label, value}]
+  relationTo   String?  // Related entity name
+  relationType String?  // ONE_TO_MANY, MANY_TO_MANY
+  order        Int      @default(0)
+  createdAt    DateTime @default(now())
+  updatedAt    DateTime @updatedAt
+
+  entity DataEntity @relation(fields: [entityId], references: [id], onDelete: Cascade)
+
+  @@unique([entityId, name])
+}
+
+model DataRecord {
+  id        String   @id @default(uuid())
+  entityId  String
+  data      Json     @db.JsonB
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  entity DataEntity @relation(fields: [entityId], references: [id], onDelete: Cascade)
+}
+
+// ===== 页面 =====
+model Page {
+  id        String   @id @default(uuid())
+  appId     String
+  title     String
+  route     String
+  schema    Json     @db.JsonB
+  status    String   @default("DRAFT")
+  version   Int      @default(1)
+  createdById String
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  app       Application @relation(fields: [appId], references: [id])
+  createdBy User        @relation(fields: [createdById], references: [id])
+
+  @@unique([appId, route])
+}
+
+// ===== 组件注册表 =====
+model ComponentDefinition {
+  id        String   @id @default(uuid())
+  name      String   @unique
+  title     String
+  category  String
+  icon      String?
+  props     Json     @db.JsonB
+  defaultProps Json?
+  events    Json?
+  version   String   @default("1.0.0")
+  isBuiltIn Boolean  @default(false)
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+}
+
+// ===== 工作流 =====
+model Workflow {
+  id            String   @id @default(uuid())
+  appId         String
+  name          String
+  description   String?  @db.Text
+  triggerType   String
+  triggerConfig Json     @db.JsonB
+  enabled       Boolean  @default(false)
+  createdById   String
+  createdAt     DateTime @default(now())
+  updatedAt     DateTime @updatedAt
+
+  app       Application   @relation(fields: [appId], references: [id])
+  createdBy User          @relation(fields: [createdById], references: [id])
+  steps     WorkflowStep[]
+  logs      WorkflowLog[]
+
+  @@unique([appId, name])
+}
+
+model WorkflowStep {
+  id             String   @id @default(uuid())
+  workflowId     String
+  type           String
+  config         Json     @db.JsonB
+  order          Int
+  label          String?
+  nextOnSuccess  String?
+  nextOnFailure  String?
+  createdAt      DateTime @default(now())
+
+  workflow Workflow @relation(fields: [workflowId], references: [id], onDelete: Cascade)
+}
+
+model WorkflowLog {
+  id          String   @id @default(uuid())
+  workflowId  String
+  status      String   // SUCCESS, FAILED, RUNNING
+  input       Json?    @db.JsonB
+  output      Json?    @db.JsonB
+  error       String?  @db.Text
+  startedAt   DateTime @default(now())
+  finishedAt  DateTime?
+
+  workflow Workflow @relation(fields: [workflowId], references: [id], onDelete: Cascade)
+}
+
+// ===== 权限 =====
+model AppRole {
+  id          String   @id @default(uuid())
+  appId       String
+  name        String
+  description String?
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  app         Application      @relation(fields: [appId], references: [id])
+  permissions Permission[]
+}
+
+model Permission {
+  id         String   @id @default(uuid())
+  roleId     String
+  resource   String
+  action     String
+  conditions Json?    @db.JsonB
+  createdAt  DateTime @default(now())
+
+  role AppRole @relation(fields: [roleId], references: [id], onDelete: Cascade)
+}
+
+// ===== 审计日志 =====
+model AuditLog {
+  id        String   @id @default(uuid())
+  userId    String?
+  appId     String?
+  action    String
+  resource  String
+  resourceId String?
+  detail    Json?    @db.JsonB
+  ip        String?
+  createdAt DateTime @default(now())
+}
