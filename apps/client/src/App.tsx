@@ -4,6 +4,7 @@ import MainLayout from './layouts/MainLayout';
 import LoginPage from './pages/login/LoginPage';
 import RegisterPage from './pages/login/RegisterPage';
 import DashboardPage from './pages/dashboard/DashboardPage';
+import SettingsPage from './pages/settings/SettingsPage';
 import AppListPage from './pages/apps/AppListPage';
 import AppDetailPage from './pages/apps/AppDetailPage';
 import AppSettingsPage from './pages/apps/AppSettingsPage';
@@ -38,6 +39,7 @@ export default function App() {
       >
         <Route index element={<Navigate to="/dashboard" replace />} />
         <Route path="dashboard" element={<DashboardPage />} />
+        <Route path="settings" element={<SettingsPage />} />
         <Route path="apps" element={<AppListPage />} />
         <Route path="apps/:appId" element={<AppDetailPage />} />
         <Route path="apps/:appId/settings" element={<AppSettingsPage />} />

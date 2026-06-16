@@ -41,7 +41,23 @@
       "Bash(git commit *)",
       "Bash(Co-Authored-By: Claude)",
       "Bash(git config *)",
-      "Bash(git push *)"
+      "Bash(git push *)",
+      "Bash(npm install *)",
+      "Bash(cc_switch --help)",
+      "Bash(npx cc-model-switcher *)",
+      "Bash(cc_switch *)",
+      "Bash(psql -U lowcode_user -d lowcode -c \"\\\\dt\")",
+      "Bash(pg_isready)",
+      "Bash(pg_lsclusters)",
+      "Bash(ps --no-headers -C postgres -o pid,cmd)",
+      "Bash(tasklist /FI \"IMAGENAME eq postgres.exe\")",
+      "Bash(docker --version)",
+      "Bash(wsl --list --quiet)",
+      "Bash(docker info *)",
+      "Bash(tasklist /FI \"IMAGENAME eq Docker Desktop.exe\")",
+      "Bash(\"/c/Program Files/Docker/Docker/Docker Desktop.exe\")",
+      "Bash(sc query *)",
+      "Bash(sc start *)"
     ]
   }
 }
