@@ -11,6 +11,7 @@ import DataModelPage from './pages/data-model/DataModelPage';
 import EntityDesignerPage from './pages/data-model/EntityDesignerPage';
 import DataBrowserPage from './pages/data-model/DataBrowserPage';
 import PageDesignerPage from './pages/page-designer/PageDesignerPage';
+import PageListPage from './pages/page-designer/PageListPage';
 import WorkflowPage from './pages/workflow-editor/WorkflowPage';
 import WorkflowEditorPage from './pages/workflow-editor/WorkflowEditorPage';
 
@@ -43,6 +44,7 @@ export default function App() {
         <Route path="apps/:appId/models" element={<DataModelPage />} />
         <Route path="apps/:appId/models/:entityId" element={<EntityDesignerPage />} />
         <Route path="apps/:appId/data/:entityId" element={<DataBrowserPage />} />
+        <Route path="apps/:appId/pages" element={<PageListPage />} />
         <Route path="apps/:appId/pages/:pageId/design" element={<PageDesignerPage />} />
         <Route path="apps/:appId/workflows" element={<WorkflowPage />} />
         <Route path="apps/:appId/workflows/:workflowId" element={<WorkflowEditorPage />} />
