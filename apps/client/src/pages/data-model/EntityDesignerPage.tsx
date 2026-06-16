@@ -25,6 +25,7 @@ const FIELD_TYPES = [
 ];
 
 const RELATION_TYPES = [
+  { value: 'ONE_TO_ONE', label: '一对一 (1:1)' },
   { value: 'ONE_TO_MANY', label: '一对多 (1:N)' },
   { value: 'MANY_TO_MANY', label: '多对多 (M:N)' },
 ];
@@ -109,7 +110,8 @@ export default function EntityDesignerPage() {
       title: '类型', dataIndex: 'type', key: 'type',
       render: (t: string, record: any) => {
         if (t === 'RELATION') {
-          const relType = record.relationType === 'MANY_TO_MANY' ? 'M:N' : '1:N';
+          const relType = record.relationType === 'ONE_TO_ONE' ? '1:1'
+            : record.relationType === 'MANY_TO_MANY' ? 'M:N' : '1:N';
           const target = record.relationTo || '?';
           return (
             <Tag color="blue">
@@ -195,7 +197,9 @@ export default function EntityDesignerPage() {
               <Typography.Text type="secondary" style={{ fontSize: 12 }}>
                 {form.getFieldValue('relationType') === 'MANY_TO_MANY'
                   ? '多对多关联将自动生成中间关系表'
-                  : '一对多关联将在本实体中存储目标实体的 ID'}
+                  : form.getFieldValue('relationType') === 'ONE_TO_ONE'
+                    ? '一对一关联将在目标实体中存储本实体的 ID'
+                    : '一对多关联将在本实体中存储目标实体的 ID'}
               </Typography.Text>
             </>
           )}

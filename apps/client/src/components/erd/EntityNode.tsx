@@ -81,9 +81,11 @@ function EntityNode({ data }: NodeProps<EntityNodeType>) {
               }}
             >
               {field.isRelation
-                ? field.relationType === 'MANY_TO_MANY'
-                  ? 'M:N'
-                  : '1:N'
+                ? field.relationType === 'ONE_TO_ONE'
+                  ? '1:1'
+                  : field.relationType === 'MANY_TO_MANY'
+                    ? 'M:N'
+                    : '1:N'
                 : field.type}
             </span>
 

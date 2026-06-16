@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useState } from 'react';
+import { useCallback, useEffect, useRef, useState } from 'react';
 import {
   ReactFlow,
   Background,
@@ -18,6 +18,7 @@ import { ReloadOutlined } from '@ant-design/icons';
 import EntityNode from './EntityNode';
 import { toReactFlowGraph } from './transformGraph';
 import { entityService } from '../../services/entity.service';
+import { appService } from '../../services/app.service';
 
 const nodeTypes = { entityNode: EntityNode } as const;
 
@@ -30,6 +31,11 @@ export default function ERDView({ appId, onEntityClick }: ERDViewProps) {
   const [nodes, setNodes, onNodesChange] = useNodesState<Node>([]);
   const [edges, setEdges, onEdgesChange] = useEdgesState<Edge>([]);
   const [loading, setLoading] = useState(true);
+  const nodesRef = useRef<Node[]>(nodes);
+  const saveTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+
+  // Keep ref in sync
+  nodesRef.current = nodes;
 
   const fetchGraph = useCallback(async () => {
     setLoading(true);
@@ -52,6 +58,28 @@ export default function ERDView({ appId, onEntityClick }: ERDViewProps) {
   useEffect(() => {
     fetchGraph();
   }, [fetchGraph]);
+
+  // Cleanup timeout on unmount
+  useEffect(() => {
+    return () => {
+      if (saveTimeoutRef.current) clearTimeout(saveTimeoutRef.current);
+    };
+  }, []);
+
+  const saveLayout = useCallback(() => {
+    const layout: Record<string, { x: number; y: number }> = {};
+    nodesRef.current.forEach((node) => {
+      layout[node.id] = { x: node.position.x, y: node.position.y };
+    });
+    appService.update(appId, { layout }).catch(() => {
+      // silently fail — layout save is non-critical
+    });
+  }, [appId]);
+
+  const onNodeDragStop = useCallback(() => {
+    if (saveTimeoutRef.current) clearTimeout(saveTimeoutRef.current);
+    saveTimeoutRef.current = setTimeout(saveLayout, 1000);
+  }, [saveLayout]);
 
   if (loading) {
     return <Spin style={{ display: 'block', margin: '100px auto' }} />;
@@ -77,6 +105,7 @@ export default function ERDView({ appId, onEntityClick }: ERDViewProps) {
         edges={edges}
         onNodesChange={onNodesChange}
         onEdgesChange={onEdgesChange}
+        onNodeDragStop={onNodeDragStop}
         nodeTypes={nodeTypes}
         fitView
         selectionMode={SelectionMode.Partial}

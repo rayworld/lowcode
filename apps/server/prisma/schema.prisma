@@ -35,6 +35,7 @@ model Application {
   createdById String
   createdAt   DateTime @default(now())
   updatedAt   DateTime @updatedAt
+  layout      Json?    @db.JsonB
 
   createdBy  User           @relation(fields: [createdById], references: [id])
   dataModels DataEntity[]

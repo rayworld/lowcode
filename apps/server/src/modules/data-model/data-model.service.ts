@@ -288,7 +288,26 @@ export class DataModelService {
       }
     }
 
-    return { nodes, edges };
+    // Filter layout to only include existing entity IDs
+    const app = await this.prisma.application.findUnique({
+      where: { id: appId },
+      select: { layout: true },
+    });
+
+    const entityIds = new Set(nodes.map((n) => n.id));
+    const rawLayout = (app?.layout as Record<string, { x: number; y: number }>) ?? {};
+    const layout: Record<string, { x: number; y: number }> = {};
+    for (const [id, pos] of Object.entries(rawLayout)) {
+      if (entityIds.has(id)) {
+        layout[id] = pos;
+      }
+    }
+
+    return {
+      nodes,
+      edges,
+      layout: Object.keys(layout).length > 0 ? layout : undefined,
+    };
   }
 
   // ========== Helpers ==========

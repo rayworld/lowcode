@@ -26,11 +26,18 @@ export interface EntityRelationEdge {
   sourceEntityId: string;
   targetEntityId: string;
   sourceFieldName: string;
-  relationType: string; // ONE_TO_MANY | MANY_TO_MANY
+  relationType: string; // ONE_TO_ONE | ONE_TO_MANY | MANY_TO_MANY
+}
+
+/** 节点位置数据 */
+export interface EntityLayoutPosition {
+  x: number;
+  y: number;
 }
 
 /** 实体关系图完整数据 */
 export interface EntityRelationGraph {
   nodes: EntityNodeData[];
   edges: EntityRelationEdge[];
+  layout?: Record<string, EntityLayoutPosition>;
 }

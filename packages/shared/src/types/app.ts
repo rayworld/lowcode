@@ -22,4 +22,5 @@ export interface UpdateAppDto {
   description?: string;
   icon?: string;
   status?: AppStatus;
+  layout?: Record<string, { x: number; y: number }>;
 }
