@@ -9,9 +9,12 @@ export const entityService = {
 
   getRelationGraph: (appId: string) => api.get(`/apps/${appId}/entities/relations`),
 
-  addField: (entityId: string, data: any) => api.post(`/entities/${entityId}/fields`, data),
-  updateField: (fieldId: string, data: any) => api.put(`/fields/${fieldId}`, data),
-  removeField: (fieldId: string) => api.delete(`/fields/${fieldId}`),
+  addField: (appId: string, entityId: string, data: any) =>
+    api.post(`/apps/${appId}/entities/${entityId}/fields`, data),
+  updateField: (appId: string, fieldId: string, data: any) =>
+    api.put(`/apps/${appId}/entities/fields/${fieldId}`, data),
+  removeField: (appId: string, fieldId: string) =>
+    api.delete(`/apps/${appId}/entities/fields/${fieldId}`),
 
   getRecords: (entityId: string, page = 1, pageSize = 20) =>
     api.get(`/entities/${entityId}/data`, { params: { page, pageSize } }),

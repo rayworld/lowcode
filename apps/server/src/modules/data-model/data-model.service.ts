@@ -102,6 +102,22 @@ export class DataModelService {
     const entity = await this.findEntityById(entityId);
     const maxOrder = entity.fields.reduce((max, f) => Math.max(max, f.order), -1);
 
+    // Validate relation config
+    if (dto.relationTo && !dto.relationType) {
+      throw new BadRequestException('关联类型不能为空');
+    }
+
+    // For relation fields, verify target entity exists
+    let targetEntity: any = null;
+    if (dto.relationTo) {
+      targetEntity = await this.prisma.dataEntity.findFirst({
+        where: { appId: entity.appId, name: dto.relationTo },
+      });
+      if (!targetEntity) {
+        throw new BadRequestException(`目标实体 "${dto.relationTo}" 不存在`);
+      }
+    }
+
     const field = await this.prisma.field.create({
       data: {
         entityId,
@@ -119,8 +135,63 @@ export class DataModelService {
       },
     });
 
+    // Auto-generate junction table for MANY_TO_MANY
+    if (dto.relationType === 'MANY_TO_MANY' && targetEntity) {
+      await this.createJunctionEntity(entity, targetEntity, field);
+    }
+
     await this.cache.del(this.cache.appKey(entity.appId, 'entities'));
     return field;
+  }
+
+  private async createJunctionEntity(
+    sourceEntity: any,
+    targetEntity: any,
+    relationField: any,
+  ) {
+    const appId = sourceEntity.appId;
+    const junctionName = `${sourceEntity.name}_${targetEntity.name}`;
+    const tableName = this.toTableName(junctionName);
+
+    // Check if junction already exists
+    const existing = await this.prisma.dataEntity.findFirst({
+      where: { appId, name: junctionName },
+    });
+    if (existing) return; // already created
+
+    const junction = await this.prisma.dataEntity.create({
+      data: {
+        appId,
+        name: junctionName,
+        displayName: `${sourceEntity.displayName}${targetEntity.displayName}关联`,
+        tableName,
+        description: `"${sourceEntity.displayName}" 与 "${targetEntity.displayName}" 的多对多关联表`,
+        fields: {
+          create: [
+            {
+              name: `${sourceEntity.name}Id`,
+              displayName: sourceEntity.displayName,
+              type: 'RELATION',
+              relationTo: sourceEntity.name,
+              relationType: 'ONE_TO_MANY',
+              required: true,
+              order: 0,
+            },
+            {
+              name: `${targetEntity.name}Id`,
+              displayName: targetEntity.displayName,
+              type: 'RELATION',
+              relationTo: targetEntity.name,
+              relationType: 'ONE_TO_MANY',
+              required: true,
+              order: 1,
+            },
+          ],
+        },
+      },
+    });
+
+    return junction;
   }
 
   async updateField(id: string, dto: UpdateFieldDto) {
