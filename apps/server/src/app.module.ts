@@ -6,6 +6,7 @@ import { BullModule } from '@nestjs/bull';
 import * as Joi from 'joi';
 
 import { PrismaModule } from './common/prisma/prisma.module';
+import { AuditModule } from './common/audit/audit.module';
 import { CacheServiceModule } from './cache/cache.module';
 import { AuthModule } from './modules/auth/auth.module';
 import { UserModule } from './modules/user/user.module';
@@ -46,6 +47,7 @@ import { PermissionModule } from './modules/permission/permission.module';
 
     // Internal modules
     PrismaModule,
+    AuditModule,
     CacheServiceModule,
     AuthModule,
     UserModule,

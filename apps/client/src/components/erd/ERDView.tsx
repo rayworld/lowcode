@@ -19,6 +19,7 @@ import EntityNode from './EntityNode';
 import { toReactFlowGraph } from './transformGraph';
 import { entityService } from '../../services/entity.service';
 import { appService } from '../../services/app.service';
+import { message } from 'antd';
 
 const nodeTypes = { entityNode: EntityNode } as const;
 
@@ -32,10 +33,41 @@ export default function ERDView({ appId, onEntityClick }: ERDViewProps) {
   const [edges, setEdges, onEdgesChange] = useEdgesState<Edge>([]);
   const [loading, setLoading] = useState(true);
   const nodesRef = useRef<Node[]>(nodes);
+  const edgesRef = useRef<Edge[]>(edges);
   const saveTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const [hoveredEdge, setHoveredEdge] = useState<string | null>(null);
 
-  // Keep ref in sync
+  // Keep refs in sync
   nodesRef.current = nodes;
+  edgesRef.current = edges;
+
+  // Update edge styles based on hover state
+  useEffect(() => {
+    setEdges((eds) =>
+      eds.map((edge) => {
+        const isHovered = edge.id === hoveredEdge;
+        return {
+          ...edge,
+          style: {
+            ...edge.style,
+            strokeWidth: isHovered ? 3 : 2,
+            opacity: hoveredEdge && !isHovered ? 0.2 : 0.7,
+          },
+          labelStyle: {
+            ...edge.labelStyle,
+            fontWeight: isHovered ? 700 : 600,
+          },
+        };
+      }),
+    );
+  }, [hoveredEdge, setEdges]);
+
+  const handleFieldEdit = useCallback(async (fieldId: string, fieldName: string, newDisplayName: string) => {
+    await entityService.updateField(appId, fieldId, { displayName: newDisplayName });
+    message.success(`字段 "${fieldName}" 已更新为 "${newDisplayName}"`);
+    // Refresh the graph to reflect changes
+    await fetchGraph();
+  }, [appId]);
 
   const fetchGraph = useCallback(async () => {
     setLoading(true);
@@ -47,13 +79,13 @@ export default function ERDView({ appId, onEntityClick }: ERDViewProps) {
         setEdges([]);
         return;
       }
-      const { nodes: rfNodes, edges: rfEdges } = toReactFlowGraph(graph, onEntityClick);
+      const { nodes: rfNodes, edges: rfEdges } = toReactFlowGraph(graph, onEntityClick, handleFieldEdit, appId);
       setNodes(rfNodes);
       setEdges(rfEdges);
     } finally {
       setLoading(false);
     }
-  }, [appId, onEntityClick, setNodes, setEdges]);
+  }, [appId, onEntityClick, handleFieldEdit, setNodes, setEdges]);
 
   useEffect(() => {
     fetchGraph();
@@ -81,6 +113,14 @@ export default function ERDView({ appId, onEntityClick }: ERDViewProps) {
     saveTimeoutRef.current = setTimeout(saveLayout, 1000);
   }, [saveLayout]);
 
+  const onEdgeMouseEnter = useCallback((_event: React.MouseEvent, edge: Edge) => {
+    setHoveredEdge(edge.id);
+  }, []);
+
+  const onEdgeMouseLeave = useCallback(() => {
+    setHoveredEdge(null);
+  }, []);
+
   if (loading) {
     return <Spin style={{ display: 'block', margin: '100px auto' }} />;
   }
@@ -106,6 +146,8 @@ export default function ERDView({ appId, onEntityClick }: ERDViewProps) {
         onNodesChange={onNodesChange}
         onEdgesChange={onEdgesChange}
         onNodeDragStop={onNodeDragStop}
+        onEdgeMouseEnter={onEdgeMouseEnter}
+        onEdgeMouseLeave={onEdgeMouseLeave}
         nodeTypes={nodeTypes}
         fitView
         selectionMode={SelectionMode.Partial}
@@ -117,8 +159,7 @@ export default function ERDView({ appId, onEntityClick }: ERDViewProps) {
       >
         <Controls showInteractive={false} />
         <MiniMap
-          nodeStrokeColor="#1677ff"
-          nodeColor="#e6f4ff"
+          nodeStrokeWidth={2}
           maskColor="rgba(0,0,0,0.08)"
           style={{ border: '1px solid #f0f0f0', borderRadius: 4 }}
         />

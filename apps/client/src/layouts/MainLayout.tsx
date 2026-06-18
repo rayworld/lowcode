@@ -1,4 +1,4 @@
-import { useEffect } from 'react';
+import { useEffect, useState } from 'react';
 import { Outlet, useNavigate, useLocation } from 'react-router-dom';
 import { Layout, Menu, Button, Avatar, Dropdown, Typography } from 'antd';
 import {
@@ -22,6 +22,7 @@ export default function MainLayout() {
   const navigate = useNavigate();
   const location = useLocation();
   const { user, logout } = useAuthStore();
+  const [collapsed, setCollapsed] = useState(false);
 
   useEffect(() => {
     useAuthStore.getState().loadFromStorage();
@@ -44,19 +45,48 @@ export default function MainLayout() {
 
   return (
     <Layout style={{ minHeight: '100vh' }}>
-      <Sider width={220} theme="light" style={{ borderRight: '1px solid #f0f0f0' }}>
+      <Sider
+        width={220}
+        theme="light"
+        collapsible
+        collapsed={collapsed}
+        onCollapse={setCollapsed}
+        trigger={null}
+        style={{ borderRight: '1px solid #f0f0f0' }}
+      >
         <div style={{ height: 64, display: 'flex', alignItems: 'center', justifyContent: 'center', borderBottom: '1px solid #f0f0f0' }}>
-          <Typography.Title level={4} style={{ margin: 0 }}>
-            🛠 低代码平台
+          <Typography.Title level={4} style={{ margin: 0, fontSize: collapsed ? 16 : 18 }}>
+            {collapsed ? '🛠' : '🛠 低代码平台'}
           </Typography.Title>
         </div>
         <Menu
           mode="inline"
+          inlineCollapsed={collapsed}
           selectedKeys={[location.pathname.startsWith('/apps') ? '/apps' : location.pathname]}
           items={menuItems}
           onClick={handleMenuClick}
           style={{ borderRight: 0, marginTop: 8 }}
         />
+        <div
+          onClick={() => setCollapsed(!collapsed)}
+          style={{
+            position: 'absolute',
+            bottom: 0,
+            width: '100%',
+            height: 40,
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'center',
+            borderTop: '1px solid #f0f0f0',
+            cursor: 'pointer',
+            color: '#999',
+            fontSize: 16,
+            transition: 'all 0.2s',
+          }}
+          className="sider-trigger"
+        >
+          {collapsed ? '▶' : '◀'}
+        </div>
       </Sider>
       <Layout>
         <Header

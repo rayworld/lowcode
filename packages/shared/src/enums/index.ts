@@ -14,6 +14,10 @@ export enum FieldType {
   IMAGE = 'IMAGE',
   JSON = 'JSON',
   RELATION = 'RELATION',
+  CURRENCY = 'CURRENCY',
+  LOCATION = 'LOCATION',
+  RATING = 'RATING',
+  COLOR = 'COLOR',
 }
 
 export enum ComponentCategory {

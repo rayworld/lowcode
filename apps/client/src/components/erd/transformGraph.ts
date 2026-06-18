@@ -8,7 +8,20 @@ const HEADER_HEIGHT = 60;
 const FIELD_HEIGHT = 33;
 const PADDING = 12;
 
-function estimateNodeHeight(fieldCount: number): number {
+/** Predefined color palette for entity groups */
+const GROUP_COLORS = [
+  { bg: '#1677ff', border: '#1677ff' },   // blue
+  { bg: '#722ed1', border: '#722ed1' },   // purple
+  { bg: '#fa8c16', border: '#fa8c16' },   // orange
+  { bg: '#52c41a', border: '#52c41a' },   // green
+  { bg: '#eb2f96', border: '#eb2f96' },   // pink
+  { bg: '#13c2c2', border: '#13c2c2' },   // cyan
+  { bg: '#f5222d', border: '#f5222d' },   // red
+  { bg: '#fa541c', border: '#fa541c' },   // volcano
+];
+
+function estimateNodeHeight(fieldCount: number, expanded: boolean): number {
+  if (!expanded) return HEADER_HEIGHT + Math.min(fieldCount, 5) * FIELD_HEIGHT + PADDING;
   return HEADER_HEIGHT + fieldCount * FIELD_HEIGHT + PADDING;
 }
 
@@ -18,15 +31,28 @@ function relationLabel(type: string): string {
   return '1:N';
 }
 
+/** Deterministic color from entity name */
+function getEntityColor(entityName: string): { bg: string; border: string } {
+  let hash = 0;
+  for (let i = 0; i < entityName.length; i++) {
+    hash = entityName.charCodeAt(i) + ((hash << 5) - hash);
+  }
+  const idx = Math.abs(hash) % GROUP_COLORS.length;
+  return GROUP_COLORS[idx];
+}
+
 export function toReactFlowGraph(
   graph: EntityRelationGraph,
   onEntityClick?: (entityId: string) => void,
+  onFieldEdit?: (fieldId: string, fieldName: string, newDisplayName: string) => Promise<void>,
+  appId?: string,
 ): { nodes: Node[]; edges: Edge[] } {
   const savedLayout = graph.layout ?? {};
 
   // Build nodes, use saved positions when available
   const reactFlowNodes: Node[] = graph.nodes.map((entity) => {
     const saved = savedLayout[entity.id];
+    const color = getEntityColor(entity.name);
     return {
       id: entity.id,
       type: 'entityNode',
@@ -35,6 +61,9 @@ export function toReactFlowGraph(
         label: entity.displayName,
         name: entity.name,
         entityId: entity.id,
+        appId,
+        color: color.bg,
+        borderColor: color.border,
         fields: entity.fields.map((f) => ({
           id: f.id,
           name: f.name,
@@ -45,27 +74,31 @@ export function toReactFlowGraph(
           relationType: f.relationType,
         })),
         onEntityClick,
+        onFieldEdit,
       } as EntityNodeData,
       width: NODE_WIDTH,
-      height: estimateNodeHeight(entity.fields.length),
+      height: estimateNodeHeight(entity.fields.length, entity.fields.length <= 5),
     };
   });
 
-  const reactFlowEdges: Edge[] = graph.edges.map((edge) => ({
-    id: edge.id,
-    source: edge.sourceEntityId,
-    target: edge.targetEntityId,
-    sourceHandle: `field-${edge.sourceFieldName}`,
-    targetHandle: 'entity-target',
-    type: 'smoothstep',
-    animated: false,
-    style: { stroke: '#1677ff', strokeWidth: 2 },
-    label: relationLabel(edge.relationType),
-    labelStyle: { fill: '#1677ff', fontWeight: 600, fontSize: 11 },
-    labelBgStyle: { fill: '#e6f4ff' },
-    labelBgPadding: [4, 2] as [number, number],
-    labelBgBorderRadius: 4,
-  }));
+  const reactFlowEdges: Edge[] = graph.edges.map((edge) => {
+    const color = getEntityColor(edge.sourceEntityId);
+    return {
+      id: edge.id,
+      source: edge.sourceEntityId,
+      target: edge.targetEntityId,
+      sourceHandle: `field-${edge.sourceFieldName}`,
+      targetHandle: 'entity-target',
+      type: 'smoothstep',
+      animated: true,
+      style: { stroke: color.border, strokeWidth: 2, opacity: 0.7 },
+      label: relationLabel(edge.relationType),
+      labelStyle: { fill: color.border, fontWeight: 600, fontSize: 11 },
+      labelBgStyle: { fill: '#f0f5ff' },
+      labelBgPadding: [4, 2] as [number, number],
+      labelBgBorderRadius: 4,
+    };
+  });
 
   // Dagre auto-layout for nodes WITHOUT saved positions
   const nodesToLayout = reactFlowNodes.filter((n) => !savedLayout[n.id]);

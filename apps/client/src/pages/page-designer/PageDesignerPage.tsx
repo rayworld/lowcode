@@ -1,7 +1,7 @@
 import { useEffect, useState } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { Button, Typography, Space, message, Spin, Select, Modal, Input, Form, Popconfirm } from 'antd';
-import { SaveOutlined, UndoOutlined, RedoOutlined, EyeOutlined, ArrowLeftOutlined, PlusOutlined, DeleteOutlined } from '@ant-design/icons';
+import { SaveOutlined, UndoOutlined, RedoOutlined, EyeOutlined, ArrowLeftOutlined, PlusOutlined, DeleteOutlined, MenuFoldOutlined, MenuUnfoldOutlined } from '@ant-design/icons';
 import { pageService } from '../../services/page.service';
 import { useDesignerStore } from '../../stores/designerStore';
 import { ComponentNode } from '@lowcode/shared';
@@ -23,6 +23,8 @@ export default function PageDesignerPage() {
   const [publishing, setPublishing] = useState(false);
   const [pages, setPages] = useState<any[]>([]);
   const [pageTitle, setPageTitle] = useState('');
+  const [sidebarCollapsed, setSidebarCollapsed] = useState(false);
+  const [propertyCollapsed, setPropertyCollapsed] = useState(false);
 
   // Create page modal state
   const [createModalOpen, setCreateModalOpen] = useState(false);
@@ -155,8 +157,14 @@ export default function PageDesignerPage() {
 
       {/* Designer body */}
       <div className="designer-layout">
-        <div className="designer-sidebar">
-          <ComponentList />
+        <div className="designer-sidebar" style={{ width: sidebarCollapsed ? 44 : 260, transition: 'width 0.25s', overflow: 'hidden', flexShrink: 0 }}>
+          <div style={{ display: 'flex', alignItems: 'center', justifyContent: sidebarCollapsed ? 'center' : 'space-between', padding: '8px 12px', borderBottom: '1px solid #f0f0f0', minHeight: 40 }}>
+            {!sidebarCollapsed && <Typography.Text strong style={{ fontSize: 13 }}>组件库</Typography.Text>}
+            <Button type="text" size="small" icon={sidebarCollapsed ? <MenuUnfoldOutlined /> : <MenuFoldOutlined />} onClick={() => setSidebarCollapsed(!sidebarCollapsed)} title={sidebarCollapsed ? '展开' : '收起'} />
+          </div>
+          <div style={{ display: sidebarCollapsed ? 'none' : 'block' }}>
+            <ComponentList />
+          </div>
         </div>
         <div className="designer-canvas">
           <div className="canvas-container">
@@ -164,8 +172,14 @@ export default function PageDesignerPage() {
           </div>
         </div>
         {selectedNodeId && (
-          <div className="designer-property">
-            <PropertyPanel />
+          <div className="designer-property" style={{ width: propertyCollapsed ? 44 : 300, transition: 'width 0.25s', overflow: 'hidden', flexShrink: 0 }}>
+            <div style={{ display: 'flex', alignItems: 'center', justifyContent: propertyCollapsed ? 'center' : 'space-between', padding: '8px 12px', borderBottom: '1px solid #f0f0f0', minHeight: 40 }}>
+              {!propertyCollapsed && <Typography.Text strong style={{ fontSize: 13 }}>属性配置</Typography.Text>}
+              <Button type="text" size="small" icon={propertyCollapsed ? <MenuFoldOutlined /> : <MenuUnfoldOutlined />} onClick={() => setPropertyCollapsed(!propertyCollapsed)} title={propertyCollapsed ? '展开' : '收起'} />
+            </div>
+            <div style={{ display: propertyCollapsed ? 'none' : 'block' }}>
+              <PropertyPanel />
+            </div>
           </div>
         )}
       </div>

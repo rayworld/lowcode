@@ -25,6 +25,7 @@ export interface CreateFieldDto {
 
 export interface UpdateFieldDto {
   displayName?: string;
+  type?: string;
   required?: boolean;
   defaultValue?: string;
   options?: { label: string; value: string }[];

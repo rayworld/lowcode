@@ -42,6 +42,7 @@ model Application {
   pages      Page[]
   workflows  Workflow[]
   roles      AppRole[]
+  optionSets OptionSet[]
 }
 
 // ===== 数据模型 =====
@@ -58,6 +59,7 @@ model DataEntity {
   app    Application @relation(fields: [appId], references: [id])
   fields Field[]
   records DataRecord[]
+  snapshots ModelSnapshot[]
 
   @@unique([appId, name])
   @@unique([appId, tableName])
@@ -74,13 +76,15 @@ model Field {
   unique       Boolean  @default(false)
   isList       Boolean  @default(false)
   options      Json?    // For SELECT/MULTI_SELECT: [{label, value}]
+  optionSetId  String?  // Reference to global OptionSet
   relationTo   String?  // Related entity name
   relationType String?  // ONE_TO_MANY, MANY_TO_MANY
   order        Int      @default(0)
   createdAt    DateTime @default(now())
   updatedAt    DateTime @updatedAt
 
-  entity DataEntity @relation(fields: [entityId], references: [id], onDelete: Cascade)
+  entity    DataEntity @relation(fields: [entityId], references: [id], onDelete: Cascade)
+  optionSet OptionSet? @relation(fields: [optionSetId], references: [id])
 
   @@unique([entityId, name])
 }
@@ -93,6 +97,9 @@ model DataRecord {
   updatedAt DateTime @updatedAt
 
   entity DataEntity @relation(fields: [entityId], references: [id], onDelete: Cascade)
+
+  @@index([entityId])
+  @@index([data], type: Gin)
 }
 
 // ===== 页面 =====
@@ -202,6 +209,23 @@ model Permission {
   role AppRole @relation(fields: [roleId], references: [id], onDelete: Cascade)
 }
 
+// ===== 选项集 =====
+model OptionSet {
+  id          String   @id @default(uuid())
+  appId       String
+  name        String
+  displayName String
+  options     Json     @db.JsonB    // [{label, value, color}]
+  description String?
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  app     Application @relation(fields: [appId], references: [id])
+  fields  Field[]
+
+  @@unique([appId, name])
+}
+
 // ===== 审计日志 =====
 model AuditLog {
   id        String   @id @default(uuid())
@@ -213,4 +237,20 @@ model AuditLog {
   detail    Json?    @db.JsonB
   ip        String?
   createdAt DateTime @default(now())
+}
+
+// ===== 模型版本快照 =====
+model ModelSnapshot {
+  id         String   @id @default(uuid())
+  entityId   String
+  version    Int
+  snapshot   Json     @db.JsonB    // Full entity + fields state as JSON
+  comment    String?
+  createdById String?
+  createdAt  DateTime @default(now())
+
+  entity DataEntity @relation(fields: [entityId], references: [id], onDelete: Cascade)
+
+  @@unique([entityId, version])
+  @@index([entityId])
 }
