@@ -88,35 +88,43 @@ export class DynamicDataController {
   }
 
   @Get('export/csv')
-  @ApiOperation({ summary: '导出为 CSV' })
-  async exportCsv(@Param('entityId') entityId: string, @Res() res: Response) {
-    const { items, entity } = await this.dynamicDataService.exportRecords(entityId) as any;
-
+  @ApiOperation({ summary: '导出为 CSV（分批拉取，支持大数据量）' })
+  async exportCsv(
+    @Param('entityId') entityId: string,
+    @Res() res: Response,
+    @Query('maxRecords') maxRecords?: number,
+  ) {
+    const result = await this.dynamicDataService.exportRecords(entityId, maxRecords || 100000);
+    const { items, entity, total, truncated } = result as any;
     const fields = entity.fields || [];
-    const headers = fields.map((f: any) => f.displayName || f.name);
     const fieldNames = fields.map((f: any) => f.name);
 
+    // 正确转义 CSV 值
+    const escapeCsv = (val: unknown): string => {
+      if (val === null || val === undefined) return '';
+      let str: string;
+      if (typeof val === 'object') str = JSON.stringify(val);
+      else str = String(val);
+      // 如果包含逗号、引号或换行，需要包裹引号并转义内部引号
+      if (str.includes(',') || str.includes('"') || str.includes('\n') || str.includes('\r')) {
+        return `"${str.replace(/"/g, '""')}"`;
+      }
+      return str;
+    };
+
     const BOM = '﻿';
-    const csvRows: string[] = [headers.join(',')];
+    let csv = BOM + fieldNames.map((n: string) => escapeCsv(n)).join(',');
 
     for (const item of items) {
-      const row = fieldNames.map((name: string) => {
-        let val = (item as any)[name];
-        if (val === null || val === undefined) return '';
-        if (typeof val === 'object') val = JSON.stringify(val);
-        const str = String(val);
-        if (str.includes(',') || str.includes('"') || str.includes('\n')) {
-          return `"${str.replace(/"/g, '""')}"`;
-        }
-        return str;
-      });
-      csvRows.push(row.join(','));
+      csv += '\n' + fieldNames.map((name: string) => escapeCsv(item[name])).join(',');
     }
 
-    const csv = BOM + csvRows.join('\n');
-
     res.setHeader('Content-Type', 'text/csv; charset=utf-8');
-    res.setHeader('Content-Disposition', `attachment; filename="${entity.displayName || entity.name}_数据导出.csv"`);
+    res.setHeader('Content-Disposition', `attachment; filename="${entity.displayName || entity.name}_${new Date().toISOString().slice(0, 10)}.csv"`);
+    if (truncated) {
+      res.setHeader('X-Export-Truncated', 'true');
+      res.setHeader('X-Export-Total', String(total));
+    }
     res.send(csv);
   }
 }

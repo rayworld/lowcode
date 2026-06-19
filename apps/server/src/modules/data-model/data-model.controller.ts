@@ -57,7 +57,7 @@ export class DataModelController {
     await this.auditService.logEntityCreated(userId, appId, entity.id, {
       name: entity.name,
       displayName: entity.displayName,
-      fieldCount: entity.fields?.length ?? 0,
+      fieldCount: (entity as any).fields?.length ?? 0,
     });
     return entity;
   }
@@ -98,7 +98,7 @@ export class DataModelController {
   }
 
   @Delete(':id')
-  @ApiOperation({ summary: '删除数据实体' })
+  @ApiOperation({ summary: '删除数据实体（移至回收站）' })
   async removeEntity(
     @Param('id') id: string,
     @CurrentUser('id') userId: string,
@@ -106,6 +106,48 @@ export class DataModelController {
     const entity = await this.dataModelService.findEntityById(id);
     const result = await this.dataModelService.removeEntity(id);
     await this.auditService.logEntityDeleted(userId, entity.appId, id, entity.name);
+    return result;
+  }
+
+  @Get('deleted')
+  @ApiOperation({ summary: '获取回收站中的已删除实体' })
+  async findDeletedEntities(@Param('appId') appId: string) {
+    return this.dataModelService.findDeletedEntities(appId);
+  }
+
+  @Post(':id/restore')
+  @ApiOperation({ summary: '从回收站恢复数据实体' })
+  async restoreEntity(
+    @Param('appId') appId: string,
+    @Param('id') id: string,
+    @CurrentUser('id') userId: string,
+  ) {
+    const result = await this.dataModelService.restoreEntity(id);
+    await this.auditService.log({
+      userId, appId,
+      action: 'ENTITY_RESTORED',
+      resource: 'DataEntity',
+      resourceId: id,
+      detail: result as any,
+    });
+    return result;
+  }
+
+  @Delete(':id/permanent')
+  @ApiOperation({ summary: '永久删除数据实体（不可恢复）' })
+  async permanentDeleteEntity(
+    @Param('appId') appId: string,
+    @Param('id') id: string,
+    @CurrentUser('id') userId: string,
+  ) {
+    const result = await this.dataModelService.permanentDeleteEntity(id);
+    await this.auditService.log({
+      userId, appId,
+      action: 'ENTITY_PERMANENT_DELETED',
+      resource: 'DataEntity',
+      resourceId: id,
+      detail: result as any,
+    });
     return result;
   }
 

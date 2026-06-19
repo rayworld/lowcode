@@ -42,10 +42,6 @@ export default function MainLayout() {
     return items;
   }, [isAdmin]);
 
-  useEffect(() => {
-    useAuthStore.getState().loadFromStorage();
-  }, []);
-
   const handleMenuClick = ({ key }: { key: string }) => {
     if (key.startsWith('/')) navigate(key);
   };

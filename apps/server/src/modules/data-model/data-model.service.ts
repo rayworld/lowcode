@@ -35,6 +35,18 @@ export class DataModelService {
     return entities;
   }
 
+  /** 查找已删除的实体（回收站） */
+  async findDeletedEntities(appId: string) {
+    return this.prisma.dataEntity.findMany({
+      where: { appId, deletedAt: { not: null } },
+      include: {
+        fields: { orderBy: { order: 'asc' } },
+        _count: { select: { records: true } },
+      },
+      orderBy: { deletedAt: 'desc' },
+    });
+  }
+
   async findEntityById(id: string, userId?: string) {
     const entity = await this.prisma.dataEntity.findUnique({
       where: { id },
@@ -76,7 +88,7 @@ export class DataModelService {
                 required: f.required || false,
                 unique: f.unique || false,
                 isList: f.isList || false,
-                options: f.options || undefined,
+                options: (f.options as any) || undefined,
                 relationTo: f.relationTo,
                 relationType: f.relationType,
                 order: i,
@@ -132,9 +144,51 @@ export class DataModelService {
       );
     }
 
+    // Soft delete: mark as deleted instead of hard delete
+    await this.prisma.dataEntity.update({
+      where: { id },
+      data: { deletedAt: new Date() },
+    });
+    // Also soft-delete all records for this entity
+    await this.prisma.dataRecord.updateMany({
+      where: { entityId: id },
+      data: { deletedAt: new Date() } as any,
+    });
+
+    await this.cache.del(this.cache.appKey(entity.appId, 'entities'));
+    return { deleted: true, message: `数据实体 "${entity.displayName}" 已移至回收站` };
+  }
+
+  /** 从回收站恢复实体 */
+  async restoreEntity(id: string) {
+    const entity = await this.prisma.dataEntity.findFirst({
+      where: { id, deletedAt: { not: null } },
+    });
+    if (!entity) throw new NotFoundException('回收站中未找到该实体');
+
+    await this.prisma.dataEntity.update({
+      where: { id },
+      data: { deletedAt: null },
+    });
+    await this.prisma.dataRecord.updateMany({
+      where: { entityId: id },
+      data: { deletedAt: null } as any,
+    });
+
+    await this.cache.del(this.cache.appKey(entity.appId, 'entities'));
+    return { restored: true, message: `数据实体 "${entity.displayName}" 已恢复` };
+  }
+
+  /** 永久删除实体及其数据 */
+  async permanentDeleteEntity(id: string) {
+    const entity = await this.prisma.dataEntity.findFirst({
+      where: { id, deletedAt: { not: null } },
+    });
+    if (!entity) throw new NotFoundException('回收站中未找到该实体');
+
     await this.prisma.dataEntity.delete({ where: { id } });
     await this.cache.del(this.cache.appKey(entity.appId, 'entities'));
-    return { deleted: true, message: `数据实体 "${entity.displayName}" 已删除` };
+    return { deleted: true, message: `数据实体 "${entity.displayName}" 已永久删除` };
   }
 
   // ========== Fields ==========
@@ -174,7 +228,7 @@ export class DataModelService {
         required: dto.required || false,
         unique: dto.unique || false,
         isList: dto.isList || false,
-        options: dto.options || undefined,
+        options: (dto.options as any) || undefined,
         relationTo: dto.relationTo,
         relationType: dto.relationType,
         order: maxOrder + 1,

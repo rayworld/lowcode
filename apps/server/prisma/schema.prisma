@@ -48,22 +48,24 @@ model Application {
 
 // ===== 数据模型 =====
 model DataEntity {
-  id          String   @id @default(uuid())
+  id          String    @id @default(uuid())
   appId       String
   name        String
   displayName String
   tableName   String
   description String?
-  createdAt   DateTime @default(now())
-  updatedAt   DateTime @updatedAt
+  deletedAt   DateTime?
+  createdAt   DateTime  @default(now())
+  updatedAt   DateTime  @updatedAt
 
-  app    Application @relation(fields: [appId], references: [id])
-  fields Field[]
-  records DataRecord[]
+  app       Application   @relation(fields: [appId], references: [id])
+  fields    Field[]
+  records   DataRecord[]
   snapshots ModelSnapshot[]
 
   @@unique([appId, name])
   @@unique([appId, tableName])
+  @@index([appId, deletedAt])
 }
 
 model Field {
@@ -91,15 +93,17 @@ model Field {
 }
 
 model DataRecord {
-  id        String   @id @default(uuid())
+  id        String    @id @default(uuid())
   entityId  String
-  data      Json     @db.JsonB
-  createdAt DateTime @default(now())
-  updatedAt DateTime @updatedAt
+  data      Json      @db.JsonB
+  deletedAt DateTime?
+  createdAt DateTime  @default(now())
+  updatedAt DateTime  @updatedAt
 
   entity DataEntity @relation(fields: [entityId], references: [id], onDelete: Cascade)
 
   @@index([entityId])
+  @@index([entityId, deletedAt])
   @@index([data], type: Gin)
 }
 

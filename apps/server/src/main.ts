@@ -3,6 +3,8 @@ import { ValidationPipe, Logger } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import { SwaggerModule, DocumentBuilder } from '@nestjs/swagger';
 import { AppModule } from './app.module';
+import { TransformInterceptor } from './common/interceptors/transform.interceptor';
+import { AllExceptionsFilter } from './common/filters/http-exception.filter';
 
 async function bootstrap() {
   const app = await NestFactory.create(AppModule);
@@ -18,7 +20,7 @@ async function bootstrap() {
     credentials: true,
   });
 
-  // Global pipes
+  // Global pipes — DTO validation with class-validator
   app.useGlobalPipes(
     new ValidationPipe({
       whitelist: true,
@@ -26,6 +28,12 @@ async function bootstrap() {
       forbidNonWhitelisted: true,
     }),
   );
+
+  // Global interceptors — uniform API response format
+  app.useGlobalInterceptors(new TransformInterceptor());
+
+  // Global exception filter — consistent error responses
+  app.useGlobalFilters(new AllExceptionsFilter());
 
   // Swagger documentation
   const swaggerConfig = new DocumentBuilder()

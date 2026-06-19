@@ -3,10 +3,12 @@ import { PrismaService } from '../../common/prisma/prisma.service';
 import { CacheService } from '../../cache/cache.service';
 import { DataPermissionService } from './data-permission.service';
 import { DefaultValueEngine } from './default-value.engine';
+import { ValidationEngine } from './validation-engine';
 
 @Injectable()
 export class DynamicDataService {
   private defaultValues = new DefaultValueEngine();
+  private validationEngine = new ValidationEngine();
 
   constructor(
     private prisma: PrismaService,
@@ -28,13 +30,13 @@ export class DynamicDataService {
       userId?: string;     // for row-level permission filtering
     },
   ) {
-    const entity = await this.prisma.dataEntity.findUnique({
+    const entity = await this.prisma.dataEntity.findFirst({
       where: { id: entityId },
       include: { fields: true },
     });
     if (!entity) throw new NotFoundException('数据实体不存在');
 
-    // Build Prisma where condition
+    // Build Prisma where condition — exclude soft-deleted records
     const where: any = { entityId };
     const andConditions: any[] = [];
 
@@ -166,7 +168,7 @@ export class DynamicDataService {
   }
 
   async findRecordById(entityId: string, recordId: string) {
-    const entity = await this.prisma.dataEntity.findUnique({
+    const entity = await this.prisma.dataEntity.findFirst({
       where: { id: entityId },
       include: { fields: true },
     });
@@ -193,7 +195,7 @@ export class DynamicDataService {
   }
 
   async createRecord(entityId: string, data: Record<string, unknown>, userId?: string) {
-    const entity = await this.prisma.dataEntity.findUnique({
+    const entity = await this.prisma.dataEntity.findFirst({
       where: { id: entityId },
       include: { fields: true },
     });
@@ -205,21 +207,19 @@ export class DynamicDataService {
       entityId,
     });
 
-    // Validate required fields
-    for (const field of entity.fields) {
-      const value = resolvedData[field.name];
-      if (field.required && (value === undefined || value === null || value === '')) {
-        throw new BadRequestException(`字段 "${field.displayName}" 是必填的`);
-      }
-    }
-
-    // Type validation
-    for (const field of entity.fields) {
-      const value = resolvedData[field.name];
-      if (value !== undefined && value !== null && value !== '') {
-        this.validateFieldValue(field, value);
-      }
-    }
+    // Run validation engine (required + type + custom rules)
+    const errors = this.validationEngine.validate(
+      entity.fields.map(f => ({
+        name: f.name,
+        displayName: f.displayName,
+        type: f.type,
+        required: f.required,
+        unique: f.unique,
+        validationRules: (f as any).validationRules,
+      })),
+      resolvedData,
+    );
+    this.validationEngine.throwOnError(errors);
 
     // Unique constraint check
     for (const field of entity.fields) {
@@ -244,7 +244,7 @@ export class DynamicDataService {
   }
 
   async updateRecord(entityId: string, recordId: string, data: Record<string, unknown>) {
-    const entity = await this.prisma.dataEntity.findUnique({
+    const entity = await this.prisma.dataEntity.findFirst({
       where: { id: entityId },
       include: { fields: true },
     });
@@ -252,12 +252,19 @@ export class DynamicDataService {
 
     await this.findRecordById(entityId, recordId);
 
-    // Type validation on updated fields
-    for (const field of entity.fields) {
-      if (data[field.name] !== undefined && data[field.name] !== null) {
-        this.validateFieldValue(field, data[field.name]);
-      }
-    }
+    // Run validation engine on updated fields
+    const errors = this.validationEngine.validate(
+      entity.fields.map(f => ({
+        name: f.name,
+        displayName: f.displayName,
+        type: f.type,
+        required: f.required,
+        unique: f.unique,
+        validationRules: (f as any).validationRules,
+      })),
+      data,
+    );
+    this.validationEngine.throwOnError(errors);
 
     // Unique constraint check on updated fields
     for (const field of entity.fields) {
@@ -279,39 +286,61 @@ export class DynamicDataService {
     };
   }
 
-  async deleteRecord(entityId: string, recordId: string) {
+  async deleteRecord(entityId: string, recordId: string, permanent = false) {
     await this.findRecordById(entityId, recordId);
-    await this.prisma.dataRecord.delete({ where: { id: recordId } });
+    if (permanent) {
+      await this.prisma.dataRecord.delete({ where: { id: recordId } });
+    } else {
+      await this.prisma.dataRecord.update({
+        where: { id: recordId },
+        data: { deletedAt: new Date() },
+      });
+    }
     return { deleted: true };
   }
 
-  async exportRecords(entityId: string) {
-    const entity = await this.prisma.dataEntity.findUnique({
+  /**
+   * 分批导出记录（防止大数据量 OOM）
+   * @param maxRecords 最大导出条数（默认 100000，传 0 表示不限制）
+   */
+  async exportRecords(entityId: string, maxRecords = 100000) {
+    const entity = await this.prisma.dataEntity.findFirst({
       where: { id: entityId },
       include: { fields: { orderBy: { order: 'asc' } } },
     });
     if (!entity) throw new NotFoundException('数据实体不存在');
 
-    const records = await this.prisma.dataRecord.findMany({
-      where: { entityId },
-      orderBy: { createdAt: 'desc' },
-    });
-
     const relationFields = entity.fields.filter((f) => f.type === 'RELATION' && f.relationTo);
-    const resolvedRecords = await this.resolveRelationFields(records, relationFields, entity.appId);
+    const items: any[] = [];
+    const BATCH_SIZE = 2000;
+    let cursor: string | undefined;
+    let totalFetched = 0;
 
-    const items = resolvedRecords.map((r) => {
-      const rawData = (r.data as Record<string, unknown>) ?? {};
-      const filledData = this.fillMissingFields(rawData, entity.fields);
-      return {
-        id: r.id,
-        ...filledData,
-        createdAt: r.createdAt,
-        updatedAt: r.updatedAt,
-      };
-    });
+    // 分批拉取，逐批解析关联字段
+    while (true) {
+      const batch = await this.prisma.dataRecord.findMany({
+        where: { entityId },
+        take: BATCH_SIZE,
+        ...(cursor ? { skip: 1, cursor: { id: cursor } } : {}),
+        orderBy: { createdAt: 'desc' },
+      });
 
-    return { items, entity };
+      if (batch.length === 0) break;
+
+      const resolved = await this.resolveRelationFields(batch, relationFields, entity.appId);
+      for (const r of resolved) {
+        const rawData = (r.data as Record<string, unknown>) ?? {};
+        const filledData = this.fillMissingFields(rawData, entity.fields);
+        items.push({ ...filledData, createdAt: r.createdAt, updatedAt: r.updatedAt });
+      }
+
+      totalFetched += batch.length;
+      cursor = batch[batch.length - 1].id;
+
+      if (maxRecords > 0 && totalFetched >= maxRecords) break;
+    }
+
+    return { items, entity, total: totalFetched, truncated: totalFetched >= maxRecords && maxRecords > 0 };
   }
 
   // ==================== Relation Resolution ====================

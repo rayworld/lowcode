@@ -243,6 +243,61 @@ export const MODEL_TEMPLATES: ModelTemplate[] = [
       },
     ],
   },
+  {
+    id: 'student-course',
+    name: '学生课程管理',
+    description: '学生选课管理 — 多对多关系 + 中间表明细（学生 ↔ 选课记录 ↔ 课程）',
+    icon: 'BookOutlined',
+    color: '#52c41a',
+    entities: [
+      {
+        name: 'Student',
+        displayName: '学生',
+        description: '学生基本信息',
+        fields: [
+          { name: 'name', displayName: '姓名', type: 'STRING', required: true },
+          { name: 'studentNo', displayName: '学号', type: 'STRING', required: true, unique: true },
+          { name: 'gender', displayName: '性别', type: 'SELECT', options: [{ label: '男', value: 'male' }, { label: '女', value: 'female' }] },
+          { name: 'phone', displayName: '手机号', type: 'PHONE' },
+          { name: 'email', displayName: '邮箱', type: 'EMAIL' },
+          { name: 'major', displayName: '专业', type: 'STRING' },
+          { name: 'grade', displayName: '年级', type: 'SELECT', options: [{ label: '大一', value: 'freshman' }, { label: '大二', value: 'sophomore' }, { label: '大三', value: 'junior' }, { label: '大四', value: 'senior' }] },
+          { name: 'enrollmentDate', displayName: '入学日期', type: 'DATE' },
+          { name: 'enrollments', displayName: '选课记录', type: 'RELATION', relationTo: 'Enrollment', relationType: 'ONE_TO_MANY' },
+        ],
+      },
+      {
+        name: 'Course',
+        displayName: '课程',
+        description: '课程信息',
+        fields: [
+          { name: 'name', displayName: '课程名称', type: 'STRING', required: true },
+          { name: 'code', displayName: '课程编号', type: 'STRING', required: true, unique: true },
+          { name: 'credits', displayName: '学分', type: 'NUMBER', required: true },
+          { name: 'teacher', displayName: '授课教师', type: 'STRING', required: true },
+          { name: 'schedule', displayName: '上课时间', type: 'STRING' },
+          { name: 'classroom', displayName: '上课地点', type: 'STRING' },
+          { name: 'maxStudents', displayName: '限选人数', type: 'NUMBER' },
+          { name: 'type', displayName: '课程类型', type: 'SELECT', options: [{ label: '必修', value: 'required' }, { label: '选修', value: 'elective' }, { label: '公共课', value: 'public' }] },
+          { name: 'description', displayName: '课程描述', type: 'TEXT' },
+          { name: 'enrollments', displayName: '选课学生', type: 'RELATION', relationTo: 'Enrollment', relationType: 'ONE_TO_MANY' },
+        ],
+      },
+      {
+        name: 'Enrollment',
+        displayName: '选课记录',
+        description: '学生选课关联表 — 多对多中间表，含成绩等明细',
+        fields: [
+          { name: 'student', displayName: '学生', type: 'RELATION', required: true, relationTo: 'Student', relationType: 'ONE_TO_MANY' },
+          { name: 'course', displayName: '课程', type: 'RELATION', required: true, relationTo: 'Course', relationType: 'ONE_TO_MANY' },
+          { name: 'semester', displayName: '学年学期', type: 'STRING', required: true },
+          { name: 'grade', displayName: '成绩', type: 'NUMBER' },
+          { name: 'status', displayName: '状态', type: 'SELECT', options: [{ label: '已选', value: 'enrolled' }, { label: '已通过', value: 'passed' }, { label: '未通过', value: 'failed' }, { label: '退选', value: 'dropped' }] },
+          { name: 'enrolledAt', displayName: '选课时间', type: 'DATETIME' },
+        ],
+      },
+    ],
+  },
 ];
 
 /** Get template by ID */
