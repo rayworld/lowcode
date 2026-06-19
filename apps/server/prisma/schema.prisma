@@ -23,6 +23,7 @@ model User {
   applications Application[]
   pages        Page[]
   workflows    Workflow[]
+  appRoles     UserAppRole[]
 }
 
 // ===== 应用 =====
@@ -196,6 +197,17 @@ model AppRole {
 
   app         Application      @relation(fields: [appId], references: [id])
   permissions Permission[]
+  users       UserAppRole[]
+}
+
+model UserAppRole {
+  userId String
+  roleId String
+
+  user User    @relation(fields: [userId], references: [id], onDelete: Cascade)
+  role AppRole @relation(fields: [roleId], references: [id], onDelete: Cascade)
+
+  @@id([userId, roleId])
 }
 
 model Permission {

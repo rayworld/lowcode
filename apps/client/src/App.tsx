@@ -15,6 +15,7 @@ import PageDesignerPage from './pages/page-designer/PageDesignerPage';
 import PageListPage from './pages/page-designer/PageListPage';
 import WorkflowPage from './pages/workflow-editor/WorkflowPage';
 import WorkflowEditorPage from './pages/workflow-editor/WorkflowEditorPage';
+import UserManagementPage from './pages/admin/UserManagementPage';
 
 function ProtectedRoute({ children }: { children: React.ReactNode }) {
   const { isAuthenticated } = useAuthStore();
@@ -40,6 +41,7 @@ export default function App() {
         <Route index element={<Navigate to="/dashboard" replace />} />
         <Route path="dashboard" element={<DashboardPage />} />
         <Route path="settings" element={<SettingsPage />} />
+        <Route path="admin/users" element={<UserManagementPage />} />
         <Route path="apps" element={<AppListPage />} />
         <Route path="apps/:appId" element={<AppDetailPage />} />
         <Route path="apps/:appId/settings" element={<AppSettingsPage />} />

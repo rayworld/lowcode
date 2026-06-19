@@ -39,23 +39,33 @@ export class DataPermissionService {
     // Admin sees everything
     if (user.role === 'ADMIN') return null;
 
-    // Get user's role in this app
-    const userRole = await this.prisma.appRole.findFirst({
-      where: { appId },
+    // Get all roles for this user in the app and aggregate their permissions
+    const userRoles = await this.prisma.userAppRole.findMany({
+      where: {
+        userId,
+        role: { appId },
+      },
       include: {
-        permissions: {
-          where: { resource, action: 'read' },
+        role: {
+          include: {
+            permissions: {
+              where: { resource, action: 'read' },
+            },
+          },
         },
       },
     });
-    if (!userRole) return null;
+
+    if (userRoles.length === 0) return null;
 
     const conditions: any[] = [];
-    for (const perm of userRole.permissions) {
-      if (!perm.conditions) continue;
-      const cond = perm.conditions as Record<string, unknown>;
-      const rowFilter = this.resolveCondition(cond, userId);
-      if (rowFilter) conditions.push(rowFilter);
+    for (const ur of userRoles) {
+      for (const perm of ur.role.permissions) {
+        if (!perm.conditions) continue;
+        const cond = perm.conditions as Record<string, unknown>;
+        const rowFilter = this.resolveCondition(cond, userId);
+        if (rowFilter) conditions.push(rowFilter);
+      }
     }
 
     return conditions.length > 0 ? conditions : null;
@@ -77,28 +87,41 @@ export class DataPermissionService {
     // Admin has access to all fields
     if (user.role === 'ADMIN') return null;
 
-    // Get field-level permissions for this role
-    const userRole = await this.prisma.appRole.findFirst({
-      where: { appId },
+    // Aggregate field permissions across all user's roles
+    const userRoles = await this.prisma.userAppRole.findMany({
+      where: {
+        userId,
+        role: { appId },
+      },
       include: {
-        permissions: {
-          where: {
-            resource: `Field:${entityId}`,
-            action,
+        role: {
+          include: {
+            permissions: {
+              where: {
+                resource: `Field:${entityId}`,
+                action,
+              },
+            },
           },
         },
       },
     });
-    if (!userRole) return null;
 
-    // If explicit field permissions exist, extract allowed field names
-    const fieldPerms = userRole.permissions.filter((p) => {
-      const cond = p.conditions as Record<string, unknown> | null;
-      return cond?.fieldName && typeof cond.fieldName === 'string';
-    });
+    if (userRoles.length === 0) return null;
 
-    if (fieldPerms.length > 0) {
-      return fieldPerms.map((p) => (p.conditions as any).fieldName);
+    // Collect all field-level permissions across roles
+    const fieldNames = new Set<string>();
+    for (const ur of userRoles) {
+      for (const perm of ur.role.permissions) {
+        const cond = perm.conditions as Record<string, unknown> | null;
+        if (cond?.fieldName && typeof cond.fieldName === 'string') {
+          fieldNames.add(cond.fieldName);
+        }
+      }
+    }
+
+    if (fieldNames.size > 0) {
+      return Array.from(fieldNames);
     }
 
     return null; // null means all fields accessible

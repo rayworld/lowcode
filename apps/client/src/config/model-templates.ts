@@ -7,6 +7,8 @@ export interface FieldTemplate {
   unique?: boolean;
   defaultValue?: string;
   options?: { label: string; value: string }[];
+  relationTo?: string;
+  relationType?: string;
 }
 
 export interface EntityTemplate {
@@ -150,6 +152,8 @@ export const MODEL_TEMPLATES: ModelTemplate[] = [
         displayName: '库存',
         description: '商品库存记录',
         fields: [
+          { name: 'product', displayName: '商品', type: 'RELATION', required: true, relationTo: 'Product', relationType: 'ONE_TO_MANY' },
+          { name: 'warehouse', displayName: '仓库', type: 'RELATION', required: true, relationTo: 'Warehouse', relationType: 'ONE_TO_MANY' },
           { name: 'quantity', displayName: '库存数量', type: 'NUMBER', required: true },
           { name: 'minStock', displayName: '最低库存', type: 'NUMBER' },
           { name: 'maxStock', displayName: '最高库存', type: 'NUMBER' },
@@ -165,6 +169,20 @@ export const MODEL_TEMPLATES: ModelTemplate[] = [
           { name: 'totalAmount', displayName: '总金额', type: 'CURRENCY', required: true },
           { name: 'status', displayName: '状态', type: 'SELECT', options: [{ label: '待付款', value: 'pending' }, { label: '已付款', value: 'paid' }, { label: '已发货', value: 'shipped' }, { label: '已完成', value: 'completed' }, { label: '已取消', value: 'cancelled' }] },
           { name: 'orderDate', displayName: '下单日期', type: 'DATETIME' },
+          { name: 'remark', displayName: '备注', type: 'TEXT' },
+        ],
+      },
+      {
+        name: 'OrderDetail',
+        displayName: '订单明细',
+        description: '订单商品明细行',
+        fields: [
+          { name: 'order', displayName: '所属订单', type: 'RELATION', required: true, relationTo: 'Order', relationType: 'ONE_TO_MANY' },
+          { name: 'product', displayName: '商品', type: 'RELATION', required: true, relationTo: 'Product', relationType: 'ONE_TO_MANY' },
+          { name: 'warehouse', displayName: '发货仓库', type: 'RELATION', relationTo: 'Warehouse', relationType: 'ONE_TO_MANY' },
+          { name: 'quantity', displayName: '数量', type: 'NUMBER', required: true },
+          { name: 'unitPrice', displayName: '单价', type: 'CURRENCY', required: true },
+          { name: 'subtotal', displayName: '小计', type: 'CURRENCY' },
           { name: 'remark', displayName: '备注', type: 'TEXT' },
         ],
       },

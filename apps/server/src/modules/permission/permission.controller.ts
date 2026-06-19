@@ -4,7 +4,8 @@ import {
 import { ApiTags, ApiOperation, ApiBearerAuth } from '@nestjs/swagger';
 import { PermissionService } from './permission.service';
 import { JwtAuthGuard } from '../../common/guards/jwt-auth.guard';
-import { CreateRoleDto, UpdateRoleDto, PermissionAction } from '@lowcode/shared';
+import { CurrentUser } from '../../common/decorators/current-user.decorator';
+import { CreateRoleDto, UpdateRoleDto, PermissionAction, AddUserToRoleDto } from '@lowcode/shared';
 
 @ApiTags('权限')
 @ApiBearerAuth()
@@ -58,5 +59,40 @@ export class PermissionController {
   @ApiOperation({ summary: '删除权限' })
   async removePermission(@Param('permId') id: string) {
     return this.permissionService.removePermission(id);
+  }
+
+  // ====== Member management ======
+
+  @Get('members/list')
+  @ApiOperation({ summary: '获取应用所有成员及其角色' })
+  async findMembers(@Param('appId') appId: string) {
+    return this.permissionService.findMembers(appId);
+  }
+
+  @Get('members/effective')
+  @ApiOperation({ summary: '获取当前用户在应用中的聚合权限' })
+  async getEffectivePermissions(
+    @Param('appId') appId: string,
+    @CurrentUser('id') userId: string,
+  ) {
+    return this.permissionService.getEffectivePermissions(userId, appId);
+  }
+
+  @Post(':roleId/members')
+  @ApiOperation({ summary: '添加用户到角色' })
+  async addUserToRole(
+    @Param('roleId') roleId: string,
+    @Body() dto: AddUserToRoleDto,
+  ) {
+    return this.permissionService.addUserToRole(roleId, dto.userId);
+  }
+
+  @Delete(':roleId/members/:userId')
+  @ApiOperation({ summary: '从角色移除用户' })
+  async removeUserFromRole(
+    @Param('roleId') roleId: string,
+    @Param('userId') userId: string,
+  ) {
+    return this.permissionService.removeUserFromRole(roleId, userId);
   }
 }

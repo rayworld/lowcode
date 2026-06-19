@@ -103,6 +103,8 @@ export default function DataModelPage() {
             unique: f.unique || false,
             defaultValue: f.defaultValue,
             options: f.options,
+            relationTo: f.relationTo,
+            relationType: f.relationType,
           })),
         });
         created++;

@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useState, useMemo } from 'react';
 import { Outlet, useNavigate, useLocation } from 'react-router-dom';
 import { Layout, Menu, Button, Avatar, Dropdown, Typography } from 'antd';
 import {
@@ -7,16 +7,12 @@ import {
   SettingOutlined,
   LogoutOutlined,
   UserOutlined,
+  TeamOutlined,
+  SafetyOutlined,
 } from '@ant-design/icons';
 import { useAuthStore } from '../stores/authStore';
 
 const { Header, Sider, Content } = Layout;
-
-const menuItems = [
-  { key: '/dashboard', icon: <DashboardOutlined />, label: '工作台' },
-  { key: '/apps', icon: <AppstoreOutlined />, label: '应用管理' },
-  { key: '/settings', icon: <SettingOutlined />, label: '系统设置' },
-];
 
 export default function MainLayout() {
   const navigate = useNavigate();
@@ -24,13 +20,48 @@ export default function MainLayout() {
   const { user, logout } = useAuthStore();
   const [collapsed, setCollapsed] = useState(false);
 
+  const isAdmin = user?.role === 'ADMIN';
+  const [openKeys, setOpenKeys] = useState<string[]>([]);
+
+  const menuItems = useMemo(() => {
+    const items: any[] = [
+      { key: '/dashboard', icon: <DashboardOutlined />, label: '工作台' },
+      { key: '/apps', icon: <AppstoreOutlined />, label: '应用管理' },
+    ];
+    if (isAdmin) {
+      items.push({
+        key: 'admin',
+        icon: <SafetyOutlined />,
+        label: '后台管理',
+        children: [
+          { key: '/admin/users', icon: <TeamOutlined />, label: '用户管理' },
+        ],
+      });
+    }
+    items.push({ key: '/settings', icon: <SettingOutlined />, label: '系统设置' });
+    return items;
+  }, [isAdmin]);
+
   useEffect(() => {
     useAuthStore.getState().loadFromStorage();
   }, []);
 
   const handleMenuClick = ({ key }: { key: string }) => {
-    navigate(key);
+    if (key.startsWith('/')) navigate(key);
   };
+
+  const getSelectedKeys = () => {
+    const path = location.pathname;
+    if (path.startsWith('/apps')) return ['/apps'];
+    return [path];
+  };
+
+  // Auto-open admin submenu when on admin page
+  useEffect(() => {
+    if (location.pathname.startsWith('/admin') && isAdmin) {
+      setOpenKeys((prev) => prev.includes('admin') ? prev : [...prev, 'admin']);
+    }
+  }, [location.pathname, isAdmin]);
 
   const handleLogout = () => {
     logout();
@@ -62,7 +93,9 @@ export default function MainLayout() {
         <Menu
           mode="inline"
           inlineCollapsed={collapsed}
-          selectedKeys={[location.pathname.startsWith('/apps') ? '/apps' : location.pathname]}
+          selectedKeys={getSelectedKeys()}
+          openKeys={collapsed ? [] : openKeys}
+          onOpenChange={setOpenKeys}
           items={menuItems}
           onClick={handleMenuClick}
           style={{ borderRight: 0, marginTop: 8 }}

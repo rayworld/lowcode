@@ -57,7 +57,23 @@
       "Bash(tasklist /FI \"IMAGENAME eq Docker Desktop.exe\")",
       "Bash(\"/c/Program Files/Docker/Docker/Docker Desktop.exe\")",
       "Bash(sc query *)",
-      "Bash(sc start *)"
+      "Bash(sc start *)",
+      "Bash(curl -s http://localhost:5173)",
+      "Bash(curl -s http://localhost:3001/api)",
+      "Bash(netstat -ano)",
+      "Bash(findstr \"LISTEN\")",
+      "Bash(findstr \"3001\")",
+      "Bash(npm run *)",
+      "Bash(curl -s http://localhost:3001/api/auth/login -X POST -H \"Content-Type: application/json\" -d '{}')",
+      "Bash(curl -s -o /dev/null -w \"%{http_code}\" http://localhost:3001/api/auth/login -X POST -H \"Content-Type: application/json\" -d '{}')",
+      "Bash(pkill -f \"nest start\")",
+      "Bash(curl -s -o /dev/null -w \"%{http_code}\" http://localhost:3000/api/auth/login -X POST -H \"Content-Type: application/json\" -d '{}')",
+      "Bash(taskkill /F /PID 3500)",
+      "Bash(findstr \":3000\")",
+      "Bash(findstr LISTEN)",
+      "Bash(kill -9 3500)",
+      "Bash(tskill 3500)",
+      "Bash(curl -s -o /dev/null -w \"%{http_code}\" http://localhost:5173/)"
     ]
   }
 }
